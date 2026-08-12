@@ -2,7 +2,7 @@
 
 Personal local-only Chrome extension for saving prompts and appending them to the chatbox on ChatGPT, Claude, Gemini, and Grok.
 
-![BlitzPrompts popup](docs/images/popup.png)
+![BlitzPrompts Chrome extension in action](public/blitzprompts.png)
 
 ## Features
 
