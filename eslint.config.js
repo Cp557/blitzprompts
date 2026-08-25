@@ -8,7 +8,7 @@ export default tseslint.config(
   { ignores: ['dist'] },
   {
     ...js.configs.recommended,
-    files: ['src/content/**/*.js'],
+    files: ['src/**/*.js'],
     languageOptions: {
       ecmaVersion: 'latest',
       sourceType: 'module',

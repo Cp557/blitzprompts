@@ -23,10 +23,28 @@ function ensureChromeStorage() {
   return chrome.storage.local
 }
 
+async function sendStorageMessage(type, data) {
+  if (!chrome?.runtime?.sendMessage) {
+    throw new Error('Chrome extension messaging is unavailable.')
+  }
+
+  const response = await chrome.runtime.sendMessage({ type, data })
+  if (!response?.ok) {
+    throw new Error(response?.error || 'The prompt storage request failed.')
+  }
+  return response.data
+}
+
 async function readData() {
-  const storage = ensureChromeStorage()
-  const result = await storage.get(STORAGE_KEY)
-  const raw = result?.[STORAGE_KEY]
+  let raw
+  try {
+    raw = await sendStorageMessage('blitz:read-data')
+  } catch (error) {
+    console.warn('[Extension] Background storage unavailable; using local storage.', error)
+    const storage = ensureChromeStorage()
+    const result = await storage.get(STORAGE_KEY)
+    raw = result?.[STORAGE_KEY]
+  }
 
   if (!raw || typeof raw !== 'object') {
     return { ...emptyData, prompts: [] }
@@ -39,13 +57,18 @@ async function readData() {
 }
 
 async function writeData(data) {
-  const storage = ensureChromeStorage()
-  await storage.set({
-    [STORAGE_KEY]: {
-      version: 1,
-      prompts: data.prompts.map(normalizePrompt),
-    },
-  })
+  const normalized = {
+    version: 1,
+    prompts: data.prompts.map(normalizePrompt),
+  }
+
+  try {
+    await sendStorageMessage('blitz:write-data', normalized)
+  } catch (error) {
+    console.warn('[Extension] Background storage unavailable; saving locally.', error)
+    const storage = ensureChromeStorage()
+    await storage.set({ [STORAGE_KEY]: normalized })
+  }
 }
 
 function validatePromptContent(content) {

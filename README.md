@@ -1,12 +1,13 @@
 # BlitzPrompts
 
-Personal local-only Chrome extension for saving prompts and appending them to the chatbox on ChatGPT, Claude, Gemini, and Grok.
+Personal Chrome extension for saving prompts and appending them to the chatbox on ChatGPT, Claude, Gemini, and Grok. Prompts are local by default, with optional user-owned Turso storage.
 
 ![BlitzPrompts Chrome extension in action](public/blitzprompts.png)
 
 ## Features
 
 - Store prompts locally with `chrome.storage.local`.
+- Optionally sync prompts to a personal Turso database while retaining a local mirror.
 - Create, edit, delete, and reorder prompts.
 - Fill `{{placeholders}}` before inserting a prompt.
 - Append saved prompts to text already in supported AI chat editors.
@@ -33,9 +34,20 @@ npm run build
 
 After rebuilding, reload BlitzPrompts on `chrome://extensions/` and refresh any supported chat tabs. Changes to site adapters should be manually exercised on the affected sites.
 
+## Optional Turso storage
+
+Local storage is enabled by default and requires no configuration. To use a personal Turso database, copy `.env.example` to `.env.local` and add the database URL and a dedicated database token:
+
+```bash
+VITE_TURSO_DATABASE_URL=libsql://database-organization.turso.io
+VITE_TURSO_AUTH_TOKEN=your-database-token
+```
+
+Rebuild and reload the extension, open its toolbar popup, then choose whether to upload local prompts or restore existing Turso prompts. `.env.local` and `dist/` are ignored by Git. Vite embeds the credentials in the built background worker, so do not distribute a build containing a personal token.
+
 ## Privacy
 
-BlitzPrompts has no backend, accounts, analytics, or telemetry. Prompts are stored in `chrome.storage.local`, and the extension itself does not transmit them. Once a prompt is inserted into a chat editor, that text is subject to the AI provider's privacy practices.
+BlitzPrompts has no developer-operated backend, accounts, analytics, or telemetry. Prompts are stored in `chrome.storage.local` by default. If the user explicitly enables Turso, prompt data is also sent to that user's configured Turso database. Once a prompt is inserted into a chat editor, that text is subject to the AI provider's privacy practices.
 
 ## Contributing
 
@@ -45,8 +57,8 @@ If a supported site stops working, rebuild and reload the extension first. AI ch
 
 ## Notes
 
-- No `.env` file is required.
-- Prompt data is stored locally with `chrome.storage.local`.
+- No `.env` file is required for local-only use.
+- Turso credentials belong in the gitignored `.env.local`, never in committed source.
 
 ## License
 
