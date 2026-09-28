@@ -25,16 +25,11 @@ export class ClaudeAdapter extends BaseSiteAdapter {
   /**
    * Locate the wiggle controls container on chat pages.
    * This container holds the Share button and other action controls.
-   * Returns { container, shareButton } or null.
    */
   findActionsContainer() {
     // Primary: Use the wiggle-controls-actions container directly
     const container = document.querySelector('[data-testid="wiggle-controls-actions"]')
-    if (container) {
-      const shareButton = container.querySelector('[data-testid="wiggle-controls-actions-share"]')
-      return { container, shareButton }
-    }
-    return null
+    return container
   }
 
   /**
@@ -115,16 +110,11 @@ export class ClaudeAdapter extends BaseSiteAdapter {
 
     // CASE 1: Chat page - Use wiggle-controls-actions container
     if (isChatPage) {
-      const actionsMatch = this.findActionsContainer()
-      if (actionsMatch?.container) {
+      const actionsContainer = this.findActionsContainer()
+      if (actionsContainer) {
         const headerIcon = this.createHeaderIcon()
         headerIcon.querySelector('button').addEventListener('click', clickHandler)
-        // Insert as first child (left of share button)
-        if (actionsMatch.shareButton) {
-          actionsMatch.container.insertBefore(headerIcon, actionsMatch.shareButton)
-        } else {
-          actionsMatch.container.insertBefore(headerIcon, actionsMatch.container.firstChild)
-        }
+        actionsContainer.prepend(headerIcon)
         injectedSuccessfully = true
       }
     }

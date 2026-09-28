@@ -7,11 +7,8 @@ import { getLogoSvg } from '../constants/icons.js'
 /**
  * ChatGPT-specific adapter for header icon injection
  * 
- * ChatGPT has two header areas:
- * 1. Desktop header (#page-header): Contains #conversation-header-actions with action buttons
- * 2. Mobile header (.draggable.md:hidden): Contains action buttons in a flex container
- * 
- * The icon is injected to the LEFT of the "Start a group chat" and "Turn on temporary chat" buttons
+ * Place the icon before Temporary Chat on the home page and Share on chats.
+ * Older layouts use separate desktop and mobile action groups.
  */
 export class ChatGPTAdapter extends BaseSiteAdapter {
   constructor(panelInstance) {
@@ -42,55 +39,71 @@ export class ChatGPTAdapter extends BaseSiteAdapter {
     return wrapper
   }
 
+  getHeaderTargets() {
+    const headerActions = [...document.querySelectorAll('[data-app-shell-header-obstacle]')]
+      .find((element) => element.getClientRects().length > 0 && (
+        element.querySelector('button[aria-label*="Temporary chat" i]') ||
+        element.querySelector('button[aria-label="Share"]')
+      ))
+    const firstAction = headerActions?.querySelector('button[aria-label*="Temporary chat" i]')
+      || headerActions?.querySelector('button[aria-label="Share"]')
+
+    if (firstAction) {
+      let before = firstAction
+      while (before.parentElement && before.parentElement !== headerActions) {
+        const container = before.parentElement
+        const style = window.getComputedStyle(container)
+        if (!container.matches('button, [role="button"]') &&
+            ['flex', 'inline-flex'].includes(style.display) &&
+            style.flexDirection !== 'column') {
+          return [{ container, before }]
+        }
+        before = container
+      }
+    }
+
+    // Older ChatGPT layouts expose dedicated desktop and mobile action groups.
+    const desktopActions = document.querySelector('#conversation-header-actions')
+    const mobileHeader = document.querySelector('[class~="md:hidden"].h-header-height, [class~="md:hidden"].draggable')
+    const mobileActions = mobileHeader?.lastElementChild
+    return [...new Set([desktopActions, mobileActions].filter((element) =>
+      element?.getClientRects().length > 0
+    ))].map((container) => ({ container, before: container.firstChild }))
+  }
+
   /**
    * Inject icon into ChatGPT's header bar
    * Handles both desktop and mobile headers
    */
   injectHeaderIcon() {
-    // Remove any existing injected icons first
-    document.querySelectorAll('.blitz-header-icon-wrapper').forEach(el => el.remove())
-    
-    let injectedSuccessfully = false
     const clickHandler = this.getIconClickHandler()
-    
-    // Try desktop header first (#conversation-header-actions)
-    const desktopActions = document.querySelector('#conversation-header-actions')
-    if (desktopActions) {
+    const targets = this.getHeaderTargets()
+
+    document.querySelectorAll('.blitz-header-icon-wrapper').forEach((icon) => {
+      if (!targets.some(({ container }) => container === icon.parentElement)) icon.remove()
+    })
+
+    targets.forEach(({ container, before }) => {
+      if ([...container.children].some((child) => child.classList.contains('blitz-header-icon-wrapper'))) return
+
       const headerIcon = this.createHeaderIcon()
       headerIcon.querySelector('button').addEventListener('click', clickHandler)
-      // Insert at the beginning (left side of the action buttons)
-      desktopActions.insertBefore(headerIcon, desktopActions.firstChild)
-      injectedSuccessfully = true
-    }
-    
-    // Try mobile header (the container with group chat and temporary chat buttons)
-    const mobileHeader = document.querySelector('.draggable.h-header-height.md\\:hidden .no-draggable.flex.items-center.justify-center')
-    if (mobileHeader) {
-      const headerIcon = this.createHeaderIcon()
-      headerIcon.querySelector('button').addEventListener('click', clickHandler)
-      // Insert at the beginning
-      mobileHeader.insertBefore(headerIcon, mobileHeader.firstChild)
-      injectedSuccessfully = true
-    }
-    
-    return injectedSuccessfully
+      container.insertBefore(headerIcon, before)
+    })
+
+    return targets.length > 0
   }
 
   /**
    * Check if ChatGPT header needs re-injection
    */
   needsReinjection() {
-    const desktopActions = document.querySelector('#conversation-header-actions')
-    const mobileHeader = document.querySelector('.draggable.h-header-height.md\\:hidden .no-draggable.flex.items-center.justify-center')
-    
-    const hasDesktopIcon = desktopActions?.querySelector('.blitz-header-icon-wrapper')
-    const hasMobileIcon = mobileHeader?.querySelector('.blitz-header-icon-wrapper')
-    
-    // Re-inject if containers exist but icons are missing
-    const needsDesktopInjection = desktopActions && !hasDesktopIcon
-    const needsMobileInjection = mobileHeader && !hasMobileIcon
-    
-    return needsDesktopInjection || needsMobileInjection
+    const targets = this.getHeaderTargets()
+    const icons = [...document.querySelectorAll('.blitz-header-icon-wrapper')]
+    return icons.some((icon) => !targets.some(({ container }) => container === icon.parentElement))
+      || targets.some(({ container }) =>
+        ![...container.children].some((child) => child.classList.contains('blitz-header-icon-wrapper'))
+      )
   }
 
   /**

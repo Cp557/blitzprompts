@@ -20,9 +20,16 @@ export class PromptPanel {
   }
 
   async init() {
-    // Prevent duplicate panels
+    // A previous attempt may have mounted the panel before adapter setup failed.
+    // Reuse the panel, but still initialize the site icon and observer.
     if (document.querySelector('.prompts-panel') && document.querySelector('.panel-overlay')) {
-      return true
+      try {
+        this.initSiteAdapter()
+        return true
+      } catch (error) {
+        console.error('[Extension] Init error:', error)
+        return false
+      }
     }
 
     try {
